@@ -1,4 +1,4 @@
-const val ATTEMPTS = 8
+const val POINTS_PER_WORD = 50
 object DataSource {
     val wordsSet = setOf(
         "umbrella",
@@ -8,6 +8,14 @@ object DataSource {
         "dissident",
         "wage",
         "madly",
-        "temptation"
+        "temptation",
+        "regress",
+        "recede",
+        "caution",
+        "hurdle",
+        "ditch",
+        "narrow",
+        "push-off",
+        "reassuring",
     )
 }
