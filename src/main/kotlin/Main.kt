@@ -1,4 +1,4 @@
-import DataSource.wordsSet
+import DataSource.wordsMap
 import kotlinx.coroutines.coroutineScope
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.runBlocking
@@ -10,10 +10,16 @@ import kotlin.system.exitProcess
 var totalScore = 0
 
 /**
+ * [mapKeysSize] holds the size of map's keys (the number of words in the map)
+ */
+
+var mapKeysSize = wordsMap.keys.size
+
+/**
  * [usedWords] set is used to store already used words in a game and to prevent the repetitions
  */
 
-var usedWords = mutableSetOf<String>()
+var usedWords = mutableMapOf<String, String>()
 
 /**
  * [main] is a starting point of the app
@@ -58,14 +64,15 @@ fun unscrambleWord(word: String): String {
 /**
  * [randomWord] function is just returns a new word that need to be guessed
  */
-fun randomWord(): String = wordsSet.random()
+
+fun randomWord(): Map.Entry<String, String> = wordsMap.entries.random()
 
 /**
  * At the end of the game, [randomCompliment] function displays a message for a player with the earned total score
  */
 
 fun randomCompliment(totalScore: Int): String {
-    val maxEarnedPoints = POINTS_PER_WORD * wordsSet.size
+    val maxEarnedPoints = POINTS_PER_WORD * mapKeysSize
     return when (totalScore) {
         0 -> "Very bad, I'm disappointed!!!!"
         in 50..150 -> "Not bad!"
@@ -86,8 +93,8 @@ fun randomCompliment(totalScore: Int): String {
 fun displayAfterGameMessage(totalScore: Int) {
     println("You earned $totalScore. ${randomCompliment(totalScore = totalScore)}")
     println("User's list of guessed words: ")
-    usedWords.forEach { word ->
-        println("----> $word")
+    usedWords.map { entry: Map.Entry<String, String> ->
+        println("---> ${entry.key} - ${entry.value}")
     }
 }
 
@@ -95,20 +102,21 @@ fun displayAfterGameMessage(totalScore: Int) {
  * [guessWord] function holds the game logic
  */
 
-suspend fun guessWord(wordToGuess: String = randomWord()): Unit = coroutineScope {
+suspend fun guessWord(wordToGuess: Map.Entry<String, String> = randomWord()): Unit = coroutineScope {
+    val word = wordToGuess.key
     fun isContinuePlaying(): Boolean {
         println("Do you want to continue playing? ('true' or 'false')")
         return readln().toBoolean()
     }
     while (true) {
-        if (usedWords.contains(wordToGuess)) {
+        if (usedWords.contains(word)) {
             guessWord(wordToGuess = randomWord())
         } else {
-            usedWords.add(wordToGuess)
+            usedWords[word] = wordToGuess.value
             delay(340L)
-            displayWordToGuess(word = unscrambleWord(word = wordToGuess))
+            displayWordToGuess(word = unscrambleWord(word = word))
             val userGuess = readln()
-            if (userGuess.equals(wordToGuess, ignoreCase = true)) {
+            if (userGuess.equals(word, ignoreCase = true)) {
                 totalScore += POINTS_PER_WORD
                 println("Cool, $POINTS_PER_WORD points were earned")
             } else {
@@ -117,7 +125,7 @@ suspend fun guessWord(wordToGuess: String = randomWord()): Unit = coroutineScope
             }
         }
 
-        if (usedWords.size == wordsSet.size) {
+        if (usedWords.size == mapKeysSize) {
             displayAfterGameMessage(totalScore = totalScore)
             exitProcess(0)
         }
