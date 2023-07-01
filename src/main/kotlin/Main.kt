@@ -26,6 +26,7 @@ var usedWords = mutableMapOf<String, String>()
  */
 
 fun main() = runBlocking {
+    delay(1000L)
     introduceToPlayer()
     guessWord()
 }
@@ -46,6 +47,7 @@ fun introduceToPlayer() {
 fun displayWordToGuess(word: String) {
     println("\t ----< $word >----")
     println("This is the word that you need to guess. Good luck!")
+    print("\n\t\t|------------|\t\t|------------|\n\t\t|\t skip\t |\t\t|\tcancel\t |\n\t\t|------------|\t\t|------------|\n")
 }
 
 /**
@@ -72,15 +74,15 @@ fun randomWord(): Map.Entry<String, String> = wordsMap.entries.random()
  */
 
 fun randomCompliment(totalScore: Int): String {
-    val maxEarnedPoints = POINTS_PER_WORD * mapKeysSize
+    val maxEarnedPoints = POINTS_PER_WORD.times(mapKeysSize)
     return when (totalScore) {
-        0 -> "Very bad, I'm disappointed!!!!"
-        in 50..150 -> "Not bad!"
-        in 151..200 -> "Good job!"
-        in 201..250 -> "Awesome!"
-        in 251..300 -> "Fucking monster. I'm as proud as Punch of you. Keep going"
-        in 301..500 -> "Stop...Please, stop... You are too good for this game. I should beat my developers' asses to make this game way much harder"
-        in 501..maxEarnedPoints -> "You guessed all of the words. Cool! I'm astonished and feel proud of you!\n(And yeah, that's everything that I wanted to say because I'm speechless)"
+        in 0..150 -> "Very bad, I'm disappointed!!!!"
+        in 150..300 -> "Not bad!"
+        in 300..750 -> "Good job!"
+        in 750..1050 -> "Awesome!"
+        in 1050..1450 -> "Fucking monster. I'm as proud as Punch of you. Keep going"
+        in 1450..1600 -> "Stop...Please, stop... You are too good for this game. I should beat my developers' asses to make this game way much harder"
+        in 1600..maxEarnedPoints -> "You guessed all of the words. Cool! I'm astonished and feel proud of you!\n(And yeah, that's everything that I wanted to say because I'm speechless)"
         else -> "Something went wrong"
     }
 }
@@ -96,6 +98,7 @@ fun displayAfterGameMessage(totalScore: Int) {
     usedWords.map { entry: Map.Entry<String, String> ->
         println("---> ${entry.key} - ${entry.value}")
     }
+    exitProcess(0)
 }
 
 /**
@@ -104,12 +107,11 @@ fun displayAfterGameMessage(totalScore: Int) {
 
 suspend fun guessWord(wordToGuess: Map.Entry<String, String> = randomWord()): Unit = coroutineScope {
     val word = wordToGuess.key
-    fun isContinuePlaying(): Boolean {
-        println("Do you want to continue playing? ('true' or 'false')")
-        return readln().toBoolean()
-    }
     while (true) {
         if (usedWords.contains(word)) {
+            if (usedWords.size == mapKeysSize) {
+                displayAfterGameMessage(totalScore = totalScore)
+            }
             guessWord(wordToGuess = randomWord())
         } else {
             usedWords[word] = wordToGuess.value
@@ -119,22 +121,14 @@ suspend fun guessWord(wordToGuess: Map.Entry<String, String> = randomWord()): Un
             if (userGuess.equals(word, ignoreCase = true)) {
                 totalScore += POINTS_PER_WORD
                 println("Cool, $POINTS_PER_WORD points were earned")
+            } else if (userGuess == "skip") {
+                continue
+            } else if (userGuess == "cancel") {
+                displayAfterGameMessage(totalScore = totalScore)
             } else {
                 println("Nope. Try again")
                 continue
             }
-        }
-
-        if (usedWords.size == mapKeysSize) {
-            displayAfterGameMessage(totalScore = totalScore)
-            exitProcess(0)
-        }
-
-        val answer = isContinuePlaying()
-        if (answer) guessWord()
-        else {
-            displayAfterGameMessage(totalScore = totalScore)
-            exitProcess(0)
         }
     }
 }
