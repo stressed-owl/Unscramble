@@ -106,6 +106,7 @@ fun displayAfterGameMessage(totalScore: Int) {
  */
 
 suspend fun guessWord(wordToGuess: Map.Entry<String, String> = randomWord()): Unit = coroutineScope {
+    // word that we need to guess
     val word = wordToGuess.key
     while (true) {
         if (usedWords.contains(word)) {
@@ -115,7 +116,7 @@ suspend fun guessWord(wordToGuess: Map.Entry<String, String> = randomWord()): Un
             guessWord(wordToGuess = randomWord())
         } else {
             usedWords[word] = wordToGuess.value
-            delay(340L)
+            delay(540L)
             displayWordToGuess(word = unscrambleWord(word = word))
             val userGuess = readln()
             if (userGuess.equals(word, ignoreCase = true)) {
@@ -124,6 +125,7 @@ suspend fun guessWord(wordToGuess: Map.Entry<String, String> = randomWord()): Un
             } else if (userGuess == "skip") {
                 continue
             } else if (userGuess == "cancel") {
+                usedWords.remove(word)
                 displayAfterGameMessage(totalScore = totalScore)
             } else {
                 println("Nope. Try again")
