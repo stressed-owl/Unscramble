@@ -1,9 +1,10 @@
 package model
 
 /**
- * [POINTS_PER_WORD] constant holds max number of points that user can earn if they guess a word
+ * [POINTS_PER_WORD] constant holds max number of points that user can earn if they guess a word depending on level of difficulty
  */
-const val POINTS_PER_WORD = 50
+
+var POINTS_PER_WORD = 0
 
 /**
  * [DataSource] object holds a set of words for game
