@@ -1,7 +1,9 @@
-import DataSource.wordsMap
 import kotlinx.coroutines.coroutineScope
-import kotlinx.coroutines.delay
 import kotlinx.coroutines.runBlocking
+import model.DataSource.wordsList
+import model.DifficultyLevel
+import model.POINTS_PER_WORD
+import model.Word
 import kotlin.system.exitProcess
 
 /**
@@ -10,25 +12,31 @@ import kotlin.system.exitProcess
 var totalScore = 0
 
 /**
- * [mapKeysSize] holds the size of map's keys (the number of words in the map)
+ * [wordsNumber] holds the number of words
  */
 
-var mapKeysSize = wordsMap.keys.size
+var wordsNumber = wordsList.size
 
 /**
  * [usedWords] set is used to store already used words in a game and to prevent the repetitions
  */
 
-var usedWords = mutableMapOf<String, String>()
+var usedWords = mutableSetOf<Word>()
+
+/**
+ * [rankedMapOfWords] map holds the level of difficulty and corresponding list of words
+ * @see groupBy
+ */
+
+val rankedMapOfWords = wordsList.groupBy { it.difficultyLevel }
 
 /**
  * [main] is a starting point of the app
  */
 
 fun main() = runBlocking {
-    delay(1000L)
     introduceToPlayer()
-    guessWord()
+    guessingWordLogic()
 }
 
 /**
@@ -36,8 +44,9 @@ fun main() = runBlocking {
  */
 
 fun introduceToPlayer() {
-    println("Welcome to \"Unscramble\". In this game, you have to guess the unscrambled word.")
-    println("If you do not guess it, you own me your soul...\n(just kidding)")
+    println("\"Unscramble\" is a captivating word puzzle game that challenges your ability to unravel jumbled letters and form meaningful words. \n" +
+            "Put your vocabulary and problem-solving skills to the test as you race against the clock to unscramble as many words as possible. " +
+            "\nAre you up for the challenge? Let the unscrambling begin!")
 }
 
 /**
@@ -45,7 +54,7 @@ fun introduceToPlayer() {
  */
 
 fun displayWordToGuess(word: String) {
-    println("\t ----< $word >----")
+    println("\t/------> $word <------\\")
     println("This is the word that you need to guess. Good luck!")
     print("\n\t\t|------------|\t\t|------------|\n\t\t|\t skip\t |\t\t|\tcancel\t |\n\t\t|------------|\t\t|------------|\n")
 }
@@ -64,17 +73,11 @@ fun unscrambleWord(word: String): String {
 }
 
 /**
- * [randomWord] function is just returns a new word that need to be guessed
- */
-
-fun randomWord(): Map.Entry<String, String> = wordsMap.entries.random()
-
-/**
  * At the end of the game, [randomCompliment] function displays a message for a player with the earned total score
  */
 
 fun randomCompliment(totalScore: Int): String {
-    val maxEarnedPoints = POINTS_PER_WORD.times(mapKeysSize)
+    val maxEarnedPoints = POINTS_PER_WORD.times(wordsNumber)
     return when (totalScore) {
         in 0..150 -> "Very bad, I'm disappointed!!!!"
         in 150..300 -> "Not bad!"
@@ -93,44 +96,62 @@ fun randomCompliment(totalScore: Int): String {
  */
 
 fun displayAfterGameMessage(totalScore: Int) {
-    println("You earned $totalScore. ${randomCompliment(totalScore = totalScore)}")
-    println("User's list of guessed words: ")
-    usedWords.map { entry: Map.Entry<String, String> ->
-        println("---> ${entry.key} - ${entry.value}")
+    println("\nTotally, you earned $totalScore. ${randomCompliment(totalScore = totalScore)}")
+    println("List of the words that were used in this game: ")
+    usedWords.map { word ->
+        println("---> ${word.original} - ${word.definition}")
     }
     exitProcess(0)
 }
 
 /**
- * [guessWord] function holds the game logic
+ * [guessingWordLogic] function holds the game logic
  */
 
-suspend fun guessWord(wordToGuess: Map.Entry<String, String> = randomWord()): Unit = coroutineScope {
-    // word that we need to guess
-    val word = wordToGuess.key
+suspend fun guessingWordLogic(wordsToGuess: Map<String, List<Word>> = rankedMapOfWords): Unit = coroutineScope {
+    val wordsNeedToGuess: List<Word> = when (chooseDifficultyLevel()) {
+        DifficultyLevel.Easy.name -> {
+            POINTS_PER_WORD = 50
+            wordsToGuess[DifficultyLevel.Easy.name]!!
+        }
+        DifficultyLevel.Medium.name -> {
+            POINTS_PER_WORD = 75
+            wordsToGuess[DifficultyLevel.Medium.name]!!
+        }
+        else -> {
+            POINTS_PER_WORD = 100
+            wordsToGuess[DifficultyLevel.Hard.name]!!
+        }
+    }
     while (true) {
-        if (usedWords.contains(word)) {
-            if (usedWords.size == mapKeysSize) {
+        val wordNeedToGuess = wordsNeedToGuess.random()
+        if (usedWords.contains(wordNeedToGuess)) {
+            if (usedWords.size == wordsNeedToGuess.size) {
                 displayAfterGameMessage(totalScore = totalScore)
             }
-            guessWord(wordToGuess = randomWord())
         } else {
-            usedWords[word] = wordToGuess.value
-            delay(540L)
-            displayWordToGuess(word = unscrambleWord(word = word))
+            usedWords.add(wordNeedToGuess)
+            displayWordToGuess(word = unscrambleWord(word = wordNeedToGuess.original))
             val userGuess = readln()
-            if (userGuess.equals(word, ignoreCase = true)) {
+            if (userGuess == "skip") { continue }
+            if (userGuess == "cancel") { break }
+            if (userGuess.equals(wordNeedToGuess.original, ignoreCase = true)) {
                 totalScore += POINTS_PER_WORD
-                println("Cool, $POINTS_PER_WORD points were earned")
-            } else if (userGuess == "skip") {
+                println("You earned $POINTS_PER_WORD points. Cool!")
                 continue
-            } else if (userGuess == "cancel") {
-                usedWords.remove(word)
-                displayAfterGameMessage(totalScore = totalScore)
             } else {
-                println("Nope. Try again")
+                println("Nope")
                 continue
             }
         }
     }
+}
+
+/**
+ * [chooseDifficultyLevel] functions allows users to enter the level of difficulty they desire to play with
+ */
+
+fun chooseDifficultyLevel(): String {
+    println("Enter the level of difficulty you desire")
+    return readln()
 }
