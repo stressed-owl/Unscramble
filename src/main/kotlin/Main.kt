@@ -1,4 +1,5 @@
 import kotlinx.coroutines.coroutineScope
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.runBlocking
 import model.DataSource.wordsList
 import model.DifficultyLevel
@@ -24,11 +25,17 @@ var wordsNumber = wordsList.size
 var usedWords = mutableSetOf<Word>()
 
 /**
+ * [customSetOfWords] set is used to store user's custom words
+ */
+
+var customSetOfWords = mutableSetOf<Word>()
+
+/**
  * [rankedMapOfWords] map holds the level of difficulty and corresponding list of words
  * @see groupBy
  */
 
-val rankedMapOfWords = wordsList.groupBy { it.difficultyLevel }
+var rankedMapOfWords = wordsList.groupBy { it.difficultyLevel }
 
 /**
  * [main] is a starting point of the app
@@ -44,9 +51,11 @@ fun main() = runBlocking {
  */
 
 fun introduceToPlayer() {
-    println("\"Unscramble\" is a captivating word puzzle game that challenges your ability to unravel jumbled letters and form meaningful words. \n" +
-            "Put your vocabulary and problem-solving skills to the test as you race against the clock to unscramble as many words as possible. " +
-            "\nAre you up for the challenge? Let the unscrambling begin!")
+    println(
+        "\"Unscramble\" is a captivating word puzzle game that challenges your ability to unravel jumbled letters and form meaningful words. \n" +
+                "Put your vocabulary and problem-solving skills to the test as you race against the clock to unscramble as many words as possible. " +
+                "\nAre you up for the challenge? Let the unscrambling begin!"
+    )
 }
 
 /**
@@ -109,20 +118,75 @@ fun displayAfterGameMessage(totalScore: Int) {
  */
 
 suspend fun guessingWordLogic(wordsToGuess: Map<String, List<Word>> = rankedMapOfWords): Unit = coroutineScope {
-    val wordsNeedToGuess: List<Word> = when (chooseDifficultyLevel()) {
-        DifficultyLevel.Easy.name -> {
-            POINTS_PER_WORD = 50
-            wordsToGuess[DifficultyLevel.Easy.name]!!
+    val wordsNeedToGuess: List<Word> = when (customizeAndChooseDifficulty()) {
+        "predefined" -> {
+            println("Enter level of difficulty")
+            when (readln()) {
+                DifficultyLevel.Easy.name -> {
+                    POINTS_PER_WORD = 50
+                    wordsToGuess[DifficultyLevel.Easy.name]!!
+                }
+
+                DifficultyLevel.Medium.name -> {
+                    POINTS_PER_WORD = 75
+                    wordsToGuess[DifficultyLevel.Medium.name]!!
+                }
+
+                else -> {
+                    POINTS_PER_WORD = 100
+                    wordsToGuess[DifficultyLevel.Hard.name]!!
+                }
+            }
         }
-        DifficultyLevel.Medium.name -> {
-            POINTS_PER_WORD = 75
+        "customized" -> {
+            var isEnough = false
+            while (!isEnough) {
+                println("Enter the following information about a word:\n")
+                print("Word original: ")
+                val wordOriginal = readln()
+                print("Difficulty level: ")
+                val difficultyLevel = readln()
+                print("Word definition: ")
+                val wordDefinition = readln()
+                customSetOfWords.add(
+                    Word(
+                        original = wordOriginal,
+                        difficultyLevel = difficultyLevel.replaceFirstChar { it.uppercase() },
+                        definition = wordDefinition,
+                    )
+                )
+                println("Continue?")
+                val answer = readln()
+                if (answer == "y" || answer == "yes") { continue }
+                else {
+                    isEnough = true
+                }
+            }
+            val customizedWords = customSetOfWords.groupBy { it.difficultyLevel }
+            println("Enter level of difficulty and number of points you would like to earn per each word")
+            val difficultyLevel = readln()
+            val pointsPerWord = readln().toInt()
+            POINTS_PER_WORD = pointsPerWord
+            when (difficultyLevel) {
+                DifficultyLevel.Easy.name -> {
+                    customizedWords[DifficultyLevel.Easy.name] ?: emptyList()
+                }
+
+                DifficultyLevel.Medium.name -> {
+                    customizedWords[DifficultyLevel.Medium.name] ?: emptyList()
+                }
+
+                else -> {
+                    customizedWords[DifficultyLevel.Hard.name] ?: emptyList()
+                }
+            }
+        }
+
+        else -> {
             wordsToGuess[DifficultyLevel.Medium.name]!!
         }
-        else -> {
-            POINTS_PER_WORD = 100
-            wordsToGuess[DifficultyLevel.Hard.name]!!
-        }
     }
+
     while (true) {
         val wordNeedToGuess = wordsNeedToGuess.random()
         if (usedWords.contains(wordNeedToGuess)) {
@@ -131,10 +195,15 @@ suspend fun guessingWordLogic(wordsToGuess: Map<String, List<Word>> = rankedMapO
             }
         } else {
             usedWords.add(wordNeedToGuess)
+            delay(700L)
             displayWordToGuess(word = unscrambleWord(word = wordNeedToGuess.original))
             val userGuess = readln()
-            if (userGuess == "skip") { continue }
-            if (userGuess == "cancel") { break }
+            if (userGuess == "skip") {
+                continue
+            }
+            if (userGuess == "cancel") {
+                break
+            }
             if (userGuess.equals(wordNeedToGuess.original, ignoreCase = true)) {
                 totalScore += POINTS_PER_WORD
                 println("You earned $POINTS_PER_WORD points. Cool!")
@@ -148,10 +217,10 @@ suspend fun guessingWordLogic(wordsToGuess: Map<String, List<Word>> = rankedMapO
 }
 
 /**
- * [chooseDifficultyLevel] functions allows users to enter the level of difficulty they desire to play with
+ * [customizeAndChooseDifficulty] function asks a user if they want to guess a predefined list of words or choose their own list of words
  */
 
-fun chooseDifficultyLevel(): String {
-    println("Enter the level of difficulty you desire")
+fun customizeAndChooseDifficulty(): String {
+    println("Would you like to play a customized game or predefined one?(type \"predefined\" or \"customized\")")
     return readln()
 }
